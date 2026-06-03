@@ -1,0 +1,33 @@
+# ── Genomic data: NEVER commit ────────────────────────────────
+# Raw + intermediate sequence/variant data is private and large.
+data/
+out/
+*.vcf
+*.vcf.gz
+*.vcf.gz.tbi
+*.vcf.gz.csi
+*.bcf
+*.fq
+*.fq.gz
+*.fastq
+*.fastq.gz
+*.bam
+*.bai
+*.cram
+*.crai
+*.sam
+*.fa
+*.fasta
+*.fai
+*.stats.txt
+*.SUMMARY.md
+
+# Annotation caches / databases (huge)
+vep_cache/
+snpeff_data/
+*.cache
+
+# ── Misc ──────────────────────────────────────────────────────
+.DS_Store
+*.log
+.env
