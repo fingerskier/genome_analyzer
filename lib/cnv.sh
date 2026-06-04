@@ -39,7 +39,7 @@ run_cnv() {
   perchrom="$(bcftools query -f '%CHROM\n' "$PASS" | sort -V | uniq -c | awk '{printf "| %s | %s |\n", $2, $1}')"
   largest="$(bcftools query -f '%CHROM\t%POS\t[%CN]\t%INFO/CNVLEN\n' "$PASS" \
     | awk -F'\t' '$4!="."{dir=($3<2?"loss":"gain"); print $4"\t"$1":"$2"\t"dir" CN="$3}' \
-    | sort -rn | head -10 | awk -F'\t' '{printf "| %s | %s | %s bp |\n", $3, $2, $1}')"
+    | sort -rn | awk -F'\t' 'NR<=10{printf "| %s | %s | %s bp |\n", $3, $2, $1}')"
 
   local homdel_note=""
   (( n_homdel > 0 )) && homdel_note=" (incl. $n_homdel homozygous deletion(s), CN=0)"

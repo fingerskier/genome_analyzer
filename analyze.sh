@@ -14,15 +14,17 @@ source "$SCRIPT_DIR/common.sh"
 detect_type() {
   local vcf="$1" hdr recs
   hdr="$(bcftools view -h "$vcf" 2>/dev/null)"
-  recs="$(bcftools view -H "$vcf" 2>/dev/null | head -200)"
-  if printf '%s' "$hdr" | grep -q '##source=Canvas' \
-     || printf '%s' "$hdr" | grep -Eq '##ALT=<ID=CN[0-9]' \
-     || printf '%s' "$recs" | grep -q 'SVTYPE=CNV'; then
+  # Sample the first records for type cues. `|| true` swallows the SIGPIPE that
+  # `head` triggers in bcftools on large files under `set -o pipefail`.
+  recs="$(bcftools view -H "$vcf" 2>/dev/null | head -200 || true)"
+  if grep -q '##source=Canvas' <<<"$hdr" \
+     || grep -Eq '##ALT=<ID=CN[0-9]' <<<"$hdr" \
+     || grep -q 'SVTYPE=CNV' <<<"$recs"; then
     printf 'cnv'; return
   fi
-  if printf '%s' "$hdr" | grep -Eqi 'Manta|GenerateSVCandidates' \
-     || printf '%s' "$hdr" | grep -Eq '##ALT=<ID=(DEL|INS|DUP|INV|BND)' \
-     || printf '%s' "$recs" | grep -Eq 'SVTYPE=(DEL|INS|DUP|INV|BND)'; then
+  if grep -Eqi 'Manta|GenerateSVCandidates' <<<"$hdr" \
+     || grep -Eq '##ALT=<ID=(DEL|INS|DUP|INV|BND)' <<<"$hdr" \
+     || grep -Eq 'SVTYPE=(DEL|INS|DUP|INV|BND)' <<<"$recs"; then
     printf 'sv'; return
   fi
   printf 'snp-indel'

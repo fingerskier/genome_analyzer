@@ -45,7 +45,7 @@ run_sv() {
   perchrom="$(bcftools query -f '%CHROM\n' "$PASS" | sort -V | uniq -c | awk '{printf "| %s | %s |\n", $2, $1}')"
   largest="$(bcftools query -f '%CHROM\t%POS\t%INFO/SVTYPE\t%INFO/SVLEN\n' "$PASS" \
     | awk -F'\t' '$3!="BND" && $4!="."{v=($4<0?-$4:$4); print v"\t"$1":"$2"\t"$3}' \
-    | sort -rn | head -10 | awk -F'\t' '{printf "| %s | %s | %s |\n", $3, $2, $1}')"
+    | sort -rn | awk -F'\t' 'NR<=10{printf "| %s | %s | %s |\n", $3, $2, $1}')"
 
   # Non-PASS filter reason tally.
   local reasons
