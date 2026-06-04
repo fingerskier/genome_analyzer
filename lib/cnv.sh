@@ -1,6 +1,8 @@
 # lib/cnv.sh — Canvas copy-number-variant analyzer. Sourced by analyze.sh.
 # Expects globals: INPUT OUTDIR BASE GENES_BED ; helpers from common.sh.
 
+: "${SCRIPT_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+
 run_cnv() {
   local PASS="$OUTDIR/${BASE}.pass.vcf.gz"
   local SUMMARY="$OUTDIR/${BASE}.SUMMARY.md"
@@ -42,7 +44,18 @@ run_cnv() {
   local homdel_note=""
   (( n_homdel > 0 )) && homdel_note=" (incl. $n_homdel homozygous deletion(s), CN=0)"
 
-  local gene_note="_gene overlap added in a later step_"
+  local gene_note bed="${GENES_BED:-$SCRIPT_DIR/data/genes.GRCh38.bed}"
+  if ! have bedtools; then
+    gene_note="_skipped: bedtools not found. \`brew install bedtools && ./fetch-genes.sh\`_"
+  elif [[ ! -s "$bed" ]]; then
+    gene_note="_skipped: no gene BED at \`$bed\`. Run \`./fetch-genes.sh\` (or pass \`-g\`)._"
+  else
+    local ev="$OUTDIR/${BASE}.events.bed"
+    bcftools query -f '%CHROM\t%POS\t%INFO/END\t%ID\n' "$PASS" \
+      | awk -F'\t' 'BEGIN{OFS="\t"} $3!="."{print $1, $2-1, $3, $4}' > "$ev"
+    gene_overlap "$ev" "$bed" "$GENES_TSV"
+    gene_note="$(awk -F'\t' 'END{print NR}' "$GENES_TSV") events overlap genes — see \`$(basename "$GENES_TSV")\`."
+  fi
 
   log "writing $SUMMARY"
   cat > "$SUMMARY" <<EOF

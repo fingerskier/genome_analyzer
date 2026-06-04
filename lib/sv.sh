@@ -1,6 +1,8 @@
 # lib/sv.sh — Manta structural-variant analyzer. Sourced by analyze.sh.
 # Expects globals: INPUT OUTDIR BASE GENES_BED ; helpers from common.sh.
 
+: "${SCRIPT_DIR:=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+
 run_sv() {
   local PASS="$OUTDIR/${BASE}.pass.vcf.gz"
   local SUMMARY="$OUTDIR/${BASE}.SUMMARY.md"
@@ -50,8 +52,30 @@ run_sv() {
   reasons="$(bcftools view -H "$INPUT" | awk -F'\t' '$7!="PASS" && $7!="."{print $7}' | sort | uniq -c | awk '{printf "%s (%s), ", $2, $1}' | sed 's/, $//')"
   : "${reasons:=none}"
 
-  # Gene overlap placeholder (wired in Task 9).
-  local gene_note="_gene overlap added in a later step_"
+  # Gene overlap (graceful: stats stand alone if bedtools / gene BED are absent).
+  local gene_note bed="${GENES_BED:-$SCRIPT_DIR/data/genes.GRCh38.bed}"
+  if ! have bedtools; then
+    gene_note="_skipped: bedtools not found. \`brew install bedtools && ./fetch-genes.sh\`_"
+  elif [[ ! -s "$bed" ]]; then
+    gene_note="_skipped: no gene BED at \`$bed\`. Run \`./fetch-genes.sh\` (or pass \`-g\`)._"
+  else
+    # Build events BED. Non-BND: POS-1..END. BND: each endpoint as a 1bp interval
+    # (this record's POS, plus the mate position parsed from ALT N[chr:pos[ / ]chr:pos]N).
+    local ev="$OUTDIR/${BASE}.events.bed"
+    bcftools query -f '%CHROM\t%POS\t%INFO/END\t%INFO/SVTYPE\t%ID\t%ALT\n' "$PASS" \
+      | awk -F'\t' 'BEGIN{OFS="\t"}
+          $4!="BND" && $3!="."{ print $1, $2-1, $3, $5 }
+          $4=="BND"{
+            print $1, $2-1, $2, $5
+            alt=$6
+            if(match(alt, /[][][0-9XYMT]+:[0-9]+/)){
+              loc=substr(alt, RSTART, RLENGTH); sub(/^[][]/,"",loc)
+              split(loc, m, ":"); print m[1], m[2]-1, m[2], $5
+            }
+          }' > "$ev"
+    gene_overlap "$ev" "$bed" "$GENES_TSV"
+    gene_note="$(awk -F'\t' 'END{print NR}' "$GENES_TSV") events overlap genes — see \`$(basename "$GENES_TSV")\`."
+  fi
 
   log "writing $SUMMARY"
   cat > "$SUMMARY" <<EOF
