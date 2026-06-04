@@ -31,3 +31,5 @@ snpeff_data/
 .DS_Store
 *.log
 .env
+
+work/
