@@ -40,7 +40,7 @@ main() {
       a) ANNOTATE="$OPTARG" ;;
       b) BUILD="$OPTARG" ;;
       r) REF="$OPTARG" ;;
-      h) sed -n '2,8p' "$0"; exit 0 ;;
+      h) sed -n '2,7p' "$0"; exit 0 ;;
       -) case "$OPTARG" in
            type) FORCE_TYPE="${!OPTIND}"; OPTIND=$((OPTIND+1)) ;;
            type=*) FORCE_TYPE="${OPTARG#*=}" ;;
@@ -51,7 +51,7 @@ main() {
     esac
   done
 
-  [[ -n "$INPUT" ]] || { sed -n '2,8p' "$0"; exit 1; }
+  [[ -n "$INPUT" ]] || { sed -n '2,7p' "$0"; exit 1; }
   [[ -f "$INPUT" ]] || die "input not found: $INPUT"
   have bcftools || die "bcftools not on PATH (install htslib/bcftools first)"
   have tabix    || die "tabix not on PATH (part of htslib)"
