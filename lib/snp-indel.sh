@@ -70,6 +70,10 @@ _Generated $(date -u '+%Y-%m-%d %H:%M UTC') by analyze.sh (snp-indel)_
 | PASS records | $PASS_N |
 | Annotation | $ANNO_NOTE |
 
+## Quality read
+- **Ti/Tv** $TITV against an expected $TITV_OK for this assay type. A value well below range hints at false-positive enrichment; treat downstream calls with more skepticism.
+- $( if (( PASS_N < RECORDS )); then echo "Filtering removed $(( RECORDS - PASS_N )) non-PASS records."; else echo "All records were PASS/unfiltered."; fi )
+
 ## Artifacts
 | File | What it is |
 |---|---|
