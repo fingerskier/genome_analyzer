@@ -63,6 +63,7 @@ It prints e.g. `detected: cnv` and writes results to `out/`.
 | `--type T` | force `snp-indel`\|`sv`\|`cnv` instead of auto-detect |
 | `-a ENGINE` | SNP/indel annotation: `none`\|`snpeff`\|`vep` |
 | `-b BUILD` | genome build for annotation (default `GRCh38`) |
+| `-r FILE` | reference FASTA (lets VEP add HGVS notation) |
 | `-h` | help |
 
 Examples:

@@ -162,7 +162,11 @@ Written for someone new to genetics tooling. Covers:
 | `*.{sv,cnv}.SUMMARY.md` | Human-readable summary, same style as SNP/indel |
 | `*.{sv,cnv}.pass.vcf.gz` (+index) | PASS-filtered events |
 | `*.{sv,cnv}.genes.tsv` | Event → genes-hit table (when overlap enabled) |
-| `*.{sv,cnv}.stats.txt` | Raw bcftools stats dump |
+| `*.{sv,cnv}.events.bed` | Intermediate events BED used for gene overlap |
+
+(The SNP/indel route additionally writes `*.stats.txt` from `bcftools stats`;
+the SV/CNV routes derive their counts directly via `bcftools query`/`awk` and
+do not emit a stats dump.)
 
 ## Testing
 
