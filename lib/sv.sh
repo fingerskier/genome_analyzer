@@ -42,7 +42,20 @@ run_sv() {
 
   # Per-chromosome tally (PASS) and the largest non-BND events.
   local perchrom largest
-  perchrom="$(bcftools query -f '%CHROM\n' "$PASS" | sort -V | uniq -c | awk '{printf "| %s | %s |\n", $2, $1}')"
+  # Primary contigs (1-22, X, Y, MT/M) listed individually in karyotype order;
+  # alt/random/decoy contigs collapsed into one "other contigs" row to keep the
+  # table readable on real GRCh38 data (which has dozens of decoy contigs).
+  perchrom="$(bcftools query -f '%CHROM\n' "$PASS" | sort | uniq -c \
+    | awk '{
+        cnt=$1; chr=$2; sub(/^chr/,"",chr)
+        if(chr ~ /^([1-9]|1[0-9]|2[0-2]|X|Y|MT|M)$/){ prim[chr]=cnt }
+        else { other_ev+=cnt; other_n++ }
+      }
+      END{
+        n=split("1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y MT M", ord, " ")
+        for(i=1;i<=n;i++){ c=ord[i]; if(c in prim) printf "| %s | %s |\n", c, prim[c] }
+        if(other_n>0) printf "| other contigs (%d) | %d |\n", other_n, other_ev
+      }')"
   largest="$(bcftools query -f '%CHROM\t%POS\t%INFO/SVTYPE\t%INFO/SVLEN\n' "$PASS" \
     | awk -F'\t' '$3!="BND" && $4!="."{v=($4<0?-$4:$4); print v"\t"$1":"$2"\t"$3}' \
     | sort -rn | awk -F'\t' 'NR<=10{printf "| %s | %s | %s |\n", $3, $2, $1}')"
