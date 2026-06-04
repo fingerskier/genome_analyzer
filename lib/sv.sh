@@ -40,6 +40,24 @@ run_sv() {
   maxlen="$(printf '%s\n' "$Q" | awk -F'\t' '$1!="BND" && $2!="."{v=($2<0?-$2:$2); if(v>m)m=v} END{print m+0}')"
   medlen="$(printf '%s\n' "$Q" | awk -F'\t' '$1!="BND" && $2!="."{v=($2<0?-$2:$2); print v}' | sort -n | awk '{a[NR]=$1} END{if(NR==0){print 0} else if(NR%2){print a[(NR+1)/2]} else {print int((a[NR/2]+a[NR/2+1])/2)}}')"
 
+  # Size distribution buckets from abs(SVLEN), non-BND.
+  local buckets
+  buckets="$(printf '%s\n' "$Q" | awk -F'\t' '
+    $1!="BND" && $2!="."{ v=($2<0?-$2:$2)
+      if(v<1000) b1++
+      else if(v<10000) b2++
+      else if(v<100000) b3++
+      else if(v<1000000) b4++
+      else b5++
+    }
+    END{
+      printf "| <1kb | %d |\n", b1+0
+      printf "| 1\xe2\x80\x93" "10kb | %d |\n", b2+0
+      printf "| 10\xe2\x80\x93" "100kb | %d |\n", b3+0
+      printf "| 100kb\xe2\x80\x93" "1Mb | %d |\n", b4+0
+      printf "| >1Mb | %d |\n", b5+0
+    }')"
+
   # Per-chromosome tally (PASS) and the largest non-BND events.
   local perchrom largest
   # Primary contigs (1-22, X, Y, MT/M) listed individually in karyotype order;
@@ -110,6 +128,11 @@ _Generated $(date -u '+%Y-%m-%d %H:%M UTC') by analyze.sh (sv / Manta)_
 |---|---|
 | Median | $medlen |
 | Largest | $maxlen |
+
+## Size distribution (non-BND, PASS)
+| Bucket | Count |
+|---|---|
+$buckets
 
 ## Per chromosome (PASS)
 | Chrom | Events |

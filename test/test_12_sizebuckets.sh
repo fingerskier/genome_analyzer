@@ -1,0 +1,10 @@
+( source "$REPO/common.sh"; source "$REPO/lib/sv.sh"
+  INPUT="$(make_fixture "$REPO/test/fixtures/sv.vcf.txt")"
+  OUTDIR="$TMP/sb_out"; mkdir -p "$OUTDIR"; BASE="sv"; GENES_BED=""
+  run_sv ) >/dev/null 2>&1
+sec="$(sed -n '/## Size distribution/,/## Per chromosome/p' "$TMP/sb_out/sv.SUMMARY.md")"
+assert_contains "$sec" "| <1kb | 2 |" "size buckets: 2 events under 1kb"
+assert_contains "$sec" "| 1–10kb | 1 |" "size buckets: 1 event 1-10kb"
+assert_contains "$sec" "| 10–100kb | 1 |" "size buckets: 1 event 10-100kb"
+assert_contains "$sec" "| 100kb–1Mb | 0 |" "size buckets: 0 events 100kb-1Mb"
+assert_contains "$sec" "| >1Mb | 0 |" "size buckets: 0 events over 1Mb"
