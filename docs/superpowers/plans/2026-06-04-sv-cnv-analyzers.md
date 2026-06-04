@@ -1274,7 +1274,7 @@ Expected: `N passed, 0 failed`.
 - [ ] **Step 2: Run all three real sample VCFs**
 
 ```bash
-D=~/Dropbox/My\ Documents/sample
+D=/path/to/sample        # directory holding the .snp-indel / .sv / .cnv VCFs
 ./analyze.sh -i "$D"/*.snp-indel.genome.vcf.gz -o ./work/sample
 ./analyze.sh -i "$D"/*.sv.vcf.gz  -o ./work/sample
 ./analyze.sh -i "$D"/*.cnv.vcf.gz -o ./work/sample
@@ -1290,7 +1290,7 @@ the `*.genes.tsv` tables are populated; otherwise confirm the skip note appears.
 ```bash
 brew install bedtools
 ./fetch-genes.sh
-./analyze.sh -i ~/Dropbox/My\ Documents/sample/*.cnv.vcf.gz -o ./work/sample
+./analyze.sh -i /path/to/sample/*.cnv.vcf.gz -o ./work/sample
 ```
 
 Expected: CNV summary's gene-overlap section now points to a populated `*.genes.tsv`.

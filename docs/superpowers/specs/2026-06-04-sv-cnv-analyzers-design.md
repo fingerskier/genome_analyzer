@@ -170,7 +170,7 @@ do not emit a stats dump.)
 
 ## Testing
 
-- Use the real sample SV (490K) and CNV (57K) files as fixtures (small, fast).
+- Use small synthetic SV/CNV/snp-indel VCFs as fixtures (fast; no private data).
 - Per analyzer: assert type detection routes correctly; assert counts are
   internally consistent (sum of SVTYPE counts == PASS record count; gains+losses
   == CNV event count); assert SUMMARY.md is generated and non-empty.
