@@ -36,6 +36,17 @@ run_trait_xref() {
   local GTSV="$OUTDIR/${BASE}.traits.gwas.tsv"
   local CTSV="$OUTDIR/${BASE}.traits.clinvar.tsv"
   local tmp; tmp="$(mktemp -d)"
+  # shellcheck disable=SC2064  # intentional: expand $tmp now so the trap works
+  # even on bash 3.2 where RETURN traps leak into the caller's scope.
+  trap "rm -rf $(printf %q "$tmp")" RETURN
+
+  # This tool is single-sample by design; the query below reads the first sample
+  # only. Warn (don't fail) if the VCF carries more, so partial results aren't a
+  # silent surprise.
+  local nsamp; nsamp="$(bcftools query -l "$INPUT" 2>/dev/null | grep -c . || true)"
+  if [[ "${nsamp:-0}" -gt 1 ]]; then
+    log "warning: $nsamp samples present; only the first is cross-referenced"
+  fi
 
   # 1) One normalize+query pass -> carried biallelic calls.
   #    carried.tsv: chrom \t pos \t id \t ref \t alt \t zyg(het|hom)
@@ -167,7 +178,6 @@ two alleles match the catalogued risk allele.)
 | \`$(basename "$CTSV")\` | Full ClinVar pathogenic-class hit table |
 EOF
 
-  rm -rf "$tmp"
   log "done: $SUMMARY"
   printf '%s\n' "$SUMMARY"
 }
