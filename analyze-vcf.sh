@@ -25,7 +25,7 @@ REF=""                   # optional reference FASTA (VEP can use it for HGVS)
 THREADS="$(nproc 2>/dev/null || echo 4)"
 
 # ---- helpers ----------------------------------------------------------------
-log()  { printf '\033[1;36m[%(%H:%M:%S)T]\033[0m %s\n' -1 "$*" >&2; }
+log()  { printf '\033[1;36m[%s]\033[0m %s\n' "$(date +%H:%M:%S)" "$*" >&2; }
 die()  { printf '\033[1;31mERROR:\033[0m %s\n' "$*" >&2; exit 1; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
