@@ -1,0 +1,10 @@
+( source "$REPO/common.sh"; source "$REPO/lib/sv.sh"
+  INPUT="$(make_fixture "$REPO/test/fixtures/sv.vcf.txt")"
+  OUTDIR="$TMP/sv_out"; mkdir -p "$OUTDIR"; BASE="sv"; THREADS=1; GENES_BED=""
+  run_sv )
+sum="$(cat "$TMP/sv_out/sv.SUMMARY.md")"
+assert_contains "$sum" "DEL | 2" "SV summary: 2 PASS deletions"
+assert_contains "$sum" "DUP | 1" "SV summary: 1 PASS duplication"
+assert_contains "$sum" "INS | 1" "SV summary: 1 PASS insertion"
+assert_contains "$sum" "BND | 1" "SV summary: 1 PASS breakend event"
+assert_contains "$sum" "MinQUAL" "SV summary: lists non-PASS filter reason"
