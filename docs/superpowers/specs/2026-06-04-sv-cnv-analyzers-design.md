@@ -26,6 +26,8 @@ variant classes, including gene-level overlap of the events.
 - Gene overlap for SV and CNV events (which genes each event hits).
 - No regression in existing SNP/indel behavior.
 - Degrade gracefully when optional tooling (bedtools / gene BED) is absent.
+- A README that documents installing every required and optional tool, plus
+  usage for each route — written for someone new to genetics tooling.
 
 ## Non-goals
 
@@ -87,8 +89,10 @@ A `--type snp-indel|sv|cnv` override is available to force a route.
    - Per-chromosome tally.
    - Largest N events (default 10).
    - Tally of non-PASS FILTER reasons (`MinQUAL`, `NoPairSupport`, `MaxDepth`, …).
-4. Gene overlap on PASS, non-BND events (BND endpoints handled as two points or
-   skipped — see Open question). → `*.sv.genes.tsv`.
+4. Gene overlap on PASS events → `*.sv.genes.tsv`. Non-BND events use their
+   `POS..END` span. **BND** events report genes at *both* breakend endpoints
+   (POS on this record + the mate position parsed from the ALT `N[chr:pos[`
+   notation), since the gene at each side is the point of a translocation.
 5. Emit `*.sv.SUMMARY.md`.
 
 ## CNV analyzer (`lib/cnv.sh`)
@@ -113,8 +117,8 @@ A `--type snp-indel|sv|cnv` override is available to force a route.
   Rationale: best fit for a personal-WGS exploration workflow where we want to
   catch any gene an event touches; switch with `-g` if a curated set is wanted.
 - Output: `data/genes.GRCh38.bed` (`chrom \t start \t end \t gene_symbol`),
-  chromosome naming normalized to match the VCFs (`1` vs `chr1` reconciled at
-  intersect time).
+  chromosome naming **normalized to bare contig names** (`chr1` → `1`) on fetch
+  so it matches the Manta/Canvas VCFs without per-run reconciliation.
 - Override: `analyze.sh -g /path/to/custom.bed`.
 
 ## Degradation (graceful)
@@ -134,6 +138,22 @@ The SNP/indel route never requires bedtools.
 
 - Required (all routes): `bcftools`, `tabix` (htslib) — already used.
 - Optional (SV/CNV gene overlap): `bedtools`, `data/genes.GRCh38.bed`.
+
+## README (`README.md`)
+
+Written for someone new to genetics tooling. Covers:
+
+- **What this is** — one paragraph: turns Sequencing.com WGS VCFs into readable
+  summaries; brief plain-language note on what SNP/indel vs SV vs CNV mean.
+- **Install** — macOS (Homebrew) and Linux (apt/conda) commands for the required
+  `bcftools`/`htslib` and the optional `bedtools`; note that macOS bash 3.2 is
+  fine (scripts are written for it).
+- **One-time gene model setup** — `./fetch-genes.sh` (what it downloads, where it
+  caches, that it's only needed for SV/CNV gene overlap).
+- **Usage** — `./analyze.sh -i file.vcf.gz -o out/` auto-detects type; the full
+  flag list (`-o`, `-g`, `-t`, `--type`, `-h`); one example per route.
+- **Outputs** — what each artifact file is.
+- **Caveat** — associations are research-grade, not clinical.
 
 ## Outputs (per run)
 
@@ -155,10 +175,9 @@ The SNP/indel route never requires bedtools.
 - Regression: existing SNP/indel file routes to snp-indel and produces the same
   SUMMARY as today.
 
-## Open questions
+## Resolved decisions
 
-- BND (translocation) handling in gene overlap: report genes at both breakend
-  endpoints, or list BNDs separately without gene overlap? Leaning: list both
-  endpoints' genes, since that is the interesting part of a translocation.
-- `chr`-prefix normalization: Manta/Canvas here use bare `1`; GENCODE BEDs often
-  use `chr1`. Normalize the gene BED to bare contig names on fetch.
+- **BND gene overlap** → report genes at *both* breakend endpoints (the gene on
+  each side is the substance of a translocation). Folded into the SV analyzer.
+- **`chr`-prefix** → normalize the gene BED to bare contig names (`chr1` → `1`)
+  at fetch time, matching the Manta/Canvas VCFs. Folded into `fetch-genes.sh`.
