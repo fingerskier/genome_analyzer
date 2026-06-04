@@ -829,7 +829,7 @@ _Generated $(date -u '+%Y-%m-%d %H:%M UTC') by analyze.sh (cnv / Canvas)_
 $perchrom
 
 ## Largest events
-| Location | Direction | Size (bp) |
+| Direction | Location | Size (bp) |
 |---|---|---|
 $largest
 
