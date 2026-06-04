@@ -20,19 +20,24 @@ gtf_to_bed() {
     }'
 }
 
+# collapse_genes: BED4 'chrom<TAB>start<TAB>end<TAB>name' on stdin -> one interval
+# per (gene name, chromosome), widest span, genomic-sorted. Keying on name AND
+# chromosome keeps pseudo-autosomal genes (e.g. SHOX on chrX and chrY) separate.
+collapse_genes() {
+  sort -k4,4 -k1,1 -k2,2n \
+    | awk -F'\t' 'BEGIN{OFS="\t"}
+        { if($4!=g || $1!=gc){ if(g!=""){print c,s,e,g}; g=$4; gc=$1; c=$1; s=$2; e=$3 }
+          else { if($2<s)s=$2; if($3>e)e=$3 } }
+        END{ if(g!="") print c,s,e,g }' \
+    | sort -k1,1 -k2,2n
+}
+
 main() {
   local out="$SCRIPT_DIR/data/genes.GRCh38.bed"
   mkdir -p "$SCRIPT_DIR/data"
   command -v bedtools >/dev/null 2>&1 || echo "note: bedtools not installed; analyzers need it for overlap" >&2
   echo "downloading $GENCODE_URL" >&2
-  # One interval per gene symbol: keep the widest span seen for each name.
-  curl -fsSL "$GENCODE_URL" | gunzip -c | gtf_to_bed \
-    | sort -k4,4 -k1,1 -k2,2n \
-    | awk -F'\t' 'BEGIN{OFS="\t"}
-        { if($4!=g){ if(g!=""){print c,s,e,g}; g=$4;c=$1;s=$2;e=$3 }
-          else { if($2<s)s=$2; if($3>e)e=$3 } }
-        END{ if(g!="") print c,s,e,g }' \
-    | sort -k1,1 -k2,2n > "$out"
+  curl -fsSL "$GENCODE_URL" | gunzip -c | gtf_to_bed | collapse_genes > "$out"
   echo "wrote $out ($(wc -l < "$out" | tr -d ' ') genes)" >&2
 }
 
