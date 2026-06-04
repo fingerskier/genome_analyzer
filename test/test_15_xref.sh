@@ -1,0 +1,24 @@
+# test_15_xref.sh — end-to-end trait xref on fixtures (GWAS + ClinVar).
+( source "$REPO/common.sh"; source "$REPO/lib/trait-xref.sh"
+  INPUT="$(make_fixture "$REPO/test/fixtures/xref_sample.vcf.txt")"
+  CLINVAR_VCF="$(make_fixture "$REPO/test/fixtures/clinvar.vcf.txt")"
+  GWAS_TBL="$REPO/test/fixtures/gwas_norm.tsv"
+  OUTDIR="$TMP/xref_out"; mkdir -p "$OUTDIR"; BASE="xref"
+  run_trait_xref )
+
+sum="$(cat "$TMP/xref_out/xref.traits.SUMMARY.md")"
+gtsv="$(cat "$TMP/xref_out/xref.traits.gwas.tsv")"
+ctsv="$(cat "$TMP/xref_out/xref.traits.clinvar.tsv")"
+
+assert_contains "$gtsv" "Height"            "gwas: rs100 Height association reported"
+assert_contains "$gtsv" "Coffee consumption" "gwas: rs200 Coffee association reported"
+assert_eq "0" "$(printf '%s\n' "$gtsv" | grep -c 'Weak association')" "gwas: p=1e-6 below 5e-8 threshold excluded"
+assert_contains "$sum" "**T/T**"            "gwas summary: homozygous risk genotype highlighted"
+assert_contains "$sum" "strand-ambiguous"   "gwas summary: mentions the ambiguous-SNP bucket"
+assert_contains "$gtsv" "ambiguous"         "gwas tsv: palindromic rs300 flagged ambiguous"
+
+assert_contains "$ctsv" "Example condition" "clinvar: pathogenic hit reported (underscores->spaces)"
+assert_contains "$ctsv" "homozygous"        "clinvar: zygosity reported"
+assert_contains "$ctsv" "GENEX"             "clinvar: gene symbol reported"
+assert_eq "0" "$(printf '%s\n' "$ctsv" | grep -c 'Nothing notable')" "clinvar: benign variant excluded"
+assert_contains "$sum" "not a diagnosis"    "summary: carries research-grade caveat"
