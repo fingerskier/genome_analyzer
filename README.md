@@ -86,6 +86,43 @@ Examples:
 | `*.genes.tsv` | Event → genes-hit table (SV/CNV, when overlap enabled) |
 | `*.stats.txt` | Raw `bcftools stats` dump (SNP/indel) |
 
+## Trait cross-reference (GWAS Catalog + ClinVar)
+
+Once you have a SNP/indel PASS VCF (from `analyze.sh`), cross-reference it against
+public databases to see which trait/risk and clinically-flagged alleles you carry.
+
+> **This is research-grade exploration, not a diagnosis or medical advice.**
+> A "risk allele" is a statistical association, not a verdict. Carrying one does
+> not mean you have or will develop a condition.
+
+One-time database setup (cached under git-ignored `data/`):
+
+```bash
+./fetch-gwas.sh        # GWAS Catalog associations (~68 MB download) -> data/gwas-catalog.tsv
+./fetch-clinvar.sh     # NCBI ClinVar GRCh38 VCF (large) -> data/clinvar.GRCh38.vcf.gz
+```
+
+Run the cross-reference:
+
+```bash
+./xref-traits.sh -i sample.snp-indel.genome.pass.vcf.gz -o out/
+```
+
+| Flag | Meaning |
+|---|---|
+| `-i FILE` | input SNP/indel PASS `.vcf.gz` (required) |
+| `-o DIR` | output directory (default `out`) |
+| `-g FILE` | GWAS table (default `data/gwas-catalog.tsv`) |
+| `-c FILE` | ClinVar VCF (default `data/clinvar.GRCh38.vcf.gz`) |
+| `-h` | help |
+
+Outputs: `*.traits.SUMMARY.md` (readable report — ClinVar pathogenic hits, then
+GWAS trait hits you carry ≥1 risk allele for, homozygous hits highlighted),
+`*.traits.gwas.tsv`, and `*.traits.clinvar.tsv` (full tables). If a database file
+is missing, the run still completes and the summary tells you which fetch script
+to run. **Strand-ambiguous SNPs** (A/T, C/G) can't be oriented from the VCF alone,
+so they're flagged and not scored — honest over tidy.
+
 ## Testing
 
 ```bash

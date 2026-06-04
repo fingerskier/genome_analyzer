@@ -23,6 +23,8 @@ out/
 *.SUMMARY.md
 *.genes.tsv
 *.events.bed
+*.traits.gwas.tsv
+*.traits.clinvar.tsv
 
 # Annotation caches / databases (huge)
 vep_cache/
