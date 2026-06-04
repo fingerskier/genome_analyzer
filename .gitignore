@@ -21,6 +21,8 @@ out/
 *.fai
 *.stats.txt
 *.SUMMARY.md
+*.genes.tsv
+*.events.bed
 
 # Annotation caches / databases (huge)
 vep_cache/
