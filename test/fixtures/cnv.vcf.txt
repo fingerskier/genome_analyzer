@@ -1,0 +1,18 @@
+##fileformat=VCFv4.1
+##source=Canvas 1.40.0.1613+master
+##ALT=<ID=CN0,Description="Copy number 0">
+##ALT=<ID=CN1,Description="Copy number 1">
+##ALT=<ID=CN3,Description="Copy number 3">
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
+##INFO=<ID=CNVLEN,Number=1,Type=Integer,Description="Number of reference positions spanned">
+##INFO=<ID=END,Number=1,Type=Integer,Description="End position">
+##FILTER=<ID=PASS,Description="All filters passed">
+##FILTER=<ID=L10kb,Description="Length shorter than 10 kb">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=CN,Number=1,Type=Integer,Description="Copy number genotype">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE
+1	800	Canvas:REF:1:800-900	N	.	20	PASS	END=900	GT:CN	./.:2
+1	1000	Canvas:LOSS:1:1000-51000	N	<CN0>	30	PASS	SVTYPE=CNV;CNVLEN=50000;END=51000	GT:CN	1/1:0
+2	2000	Canvas:LOSS:2:2000-22000	N	<CN1>	30	PASS	SVTYPE=CNV;CNVLEN=20000;END=22000	GT:CN	0/1:1
+3	60000	Canvas:GAIN:3:60000-160000	N	<CN3>	30	PASS	SVTYPE=CNV;CNVLEN=100000;END=160000	GT:CN	0/1:3
+4	5000	Canvas:GAIN:4:5000-13000	N	<CN3>	5	L10kb	SVTYPE=CNV;CNVLEN=8000;END=13000	GT:CN	0/1:3
