@@ -22,3 +22,9 @@ assert_contains "$ctsv" "homozygous"        "clinvar: zygosity reported"
 assert_contains "$ctsv" "GENEX"             "clinvar: gene symbol reported"
 assert_eq "0" "$(printf '%s\n' "$ctsv" | grep -c 'Nothing notable')" "clinvar: benign variant excluded"
 assert_contains "$sum" "not a diagnosis"    "summary: carries research-grade caveat"
+
+# Multi-condition ClinVar entries (CLNDN pipe-delimited) must not break the
+# markdown table: pipes collapse to "; " and the list caps at 3 conditions.
+assert_contains "$sum" "Cond one; Cond two; Cond three (+1 more)" "clinvar summary: pipe-delimited conditions collapsed + capped"
+assert_eq "0" "$(printf '%s\n' "$sum" | grep -c 'Cond four')" "clinvar summary: 4th condition capped out of the rendered cell"
+assert_eq "0" "$(printf '%s\n' "$sum" | grep -c 'Cond one|Cond two')" "clinvar summary: no raw pipe characters bleed into the table"

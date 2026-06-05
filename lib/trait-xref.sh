@@ -125,7 +125,15 @@ run_trait_xref() {
 
   # 4) Build SUMMARY tables (capped for readability; full data in the TSVs).
   local clinvar_rows gwas_rows
-  clinvar_rows="$(awk -F'\t' 'NR<=50{printf "| %s | %s | %s | %s | %s |\n", $5,$7,$3,$4,$6}' "$CTSV")"
+  # CLNDN/CLNSIG pack multiple values with '|', which would collide with the
+  # markdown column delimiter — collapse to "; " and cap the condition list at 3.
+  clinvar_rows="$(awk -F'\t' 'NR<=50{
+      sig=$4; gene=$7; gsub(/\|/,"; ",sig); gsub(/\|/,"; ",gene)
+      n=split($5, cc, /\|/); cond=""
+      for(i=1;i<=n && i<=3;i++) cond=cond (i>1?"; ":"") cc[i]
+      if(n>3) cond=cond " (+" (n-3) " more)"
+      printf "| %s | %s | %s | %s | %s |\n", cond, gene, $3, sig, $6
+    }' "$CTSV")"
   : "${clinvar_rows:=| _none carried_ |  |  |  |  |}"
   gwas_rows="$(awk -F'\t' '$10!="ambiguous"' "$GTSV" \
     | LC_ALL=C sort -t"$(printf '\t')" -k6,6g \

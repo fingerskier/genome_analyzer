@@ -8,3 +8,4 @@
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
 2	500	900	G	C	.	.	CLNSIG=Pathogenic;CLNDN=Example_condition;CLNREVSTAT=criteria_provided;GENEINFO=GENEX:999
 1	100	901	A	G	.	.	CLNSIG=Benign;CLNDN=Nothing_notable;CLNREVSTAT=criteria_provided;GENEINFO=GENEY:888
+1	200	902	C	T	.	.	CLNSIG=Pathogenic;CLNDN=Cond_one|Cond_two|Cond_three|Cond_four;CLNREVSTAT=criteria_provided;GENEINFO=GENEZ:777
