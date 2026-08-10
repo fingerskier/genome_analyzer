@@ -84,6 +84,7 @@ run_trait_xref() {
     : > "$GTSV"
   else
     log "GWAS Catalog cross-reference (p < 5e-8)"
+    local gwas_cols; gwas_cols="$(head -n 1 "$GWAS_TBL" | awk -F'\t' '{print NF}')"
     awk -F'\t' "$DOSAGE_FN"'
       BEGIN{OFS="\t"; THRESH=5e-8}
       FNR==NR{
@@ -112,6 +113,9 @@ run_trait_xref() {
     homhits="$(awk -F'\t' '$5==2' "$GTSV" | grep -c . || true)"
     ambn="$(awk -F'\t'   '$10=="ambiguous"' "$GTSV" | grep -c . || true)"
     gwas_note="$ghits trait association(s) carried ($homhits homozygous; $ambn strand-ambiguous, not scored) — see \`$(basename "$GTSV")\`."
+    if [[ "${gwas_cols:-8}" -lt 8 ]]; then
+      gwas_note="$gwas_note _Frequencies unavailable in this cached catalog — refresh with \`./fetch-gwas.sh -f\`._"
+    fi
   fi
 
   # 3) ClinVar join (position+allele, pathogenic-class only).
