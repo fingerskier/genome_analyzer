@@ -88,7 +88,7 @@ run_trait_xref() {
       BEGIN{OFS="\t"; THRESH=5e-8}
       FNR==NR{
         if($4 ~ /[0-9]/ && ($4+0)<THRESH){
-          rec=$2 SUBSEP $3 SUBSEP $4 SUBSEP $5 SUBSEP $6 SUBSEP $7
+          rec=$2 SUBSEP $3 SUBSEP $4 SUBSEP $5 SUBSEP $6 SUBSEP $7 SUBSEP (NF>=8?$8:"NA")
           g[$1]=($1 in g)? g[$1] "\x1f" rec : rec
         }
         next
@@ -103,7 +103,7 @@ run_trait_xref() {
           dose=dd[1]; flag=dd[2]
           if(flag=="allele_mismatch") continue
           if(flag=="ambiguous" || dose+0>=1)
-            print rs, f[2], geno, f[1], dose, f[3], f[4], f[5], f[6], flag
+            print rs, f[2], geno, f[1], dose, f[3], f[4], f[5], f[6], flag, f[7]
         }
       }' "$GWAS_TBL" "$tmp/carried.tsv" \
       | LC_ALL=C sort -t"$(printf '\t')" -k2,2 > "$GTSV"
@@ -156,8 +156,11 @@ run_trait_xref() {
   : "${clinvar_rows:=| _none carried_ |  |  |  |  |}"
   gwas_rows="$(awk -F'\t' '$10!="ambiguous"' "$GTSV" \
     | LC_ALL=C sort -t"$(printf '\t')" -k6,6g \
-    | awk -F'\t' 'NR<=50{hl=($5==2?"**":""); printf "| %s | %s | %s%s%s | %s | %s | %s | %s |\n", $2,$8,hl,$3,hl,$4,$5,$6,$7}')"
-  : "${gwas_rows:=| _none carried_ |  |  |  |  |  |  |}"
+    | awk -F'\t' 'NR<=50{
+        hl=($5==2?"**":"")
+        raf=($11=="" || $11=="NA" ? "—" : sprintf("%.0f%%", $11*100))
+        printf "| %s | %s | %s%s%s | %s | %s | %s | %s | %s |\n", $2,$8,hl,$3,hl,$4,$5,$6,$7,raf}')"
+  : "${gwas_rows:=| _none carried_ |  |  |  |  |  |  |  |}"
 
   log "writing $SUMMARY"
   cat > "$SUMMARY" <<EOF
@@ -175,8 +178,8 @@ $clinvar_rows
 ## GWAS Catalog — trait associations you carry (p < 5e-8)
 $gwas_note
 
-| Trait | Gene | Your genotype | Risk allele | Copies | p-value | OR/beta |
-|---|---|---|---|---|---|---|
+| Trait | Gene | Your genotype | Risk allele | Copies | p-value | OR/beta | Risk-allele freq |
+|---|---|---|---|---|---|---|---|
 $gwas_rows
 
 (**Bold** genotype = homozygous for the risk allele. "Copies" is how many of your
@@ -201,7 +204,7 @@ two alleles match the catalogued risk allele.)
 ## Artifacts
 | File | What it is |
 |---|---|
-| \`$(basename "$GTSV")\` | Full GWAS hit table (rsid, trait, genotype, risk allele, copies, p, OR/beta, gene, pmid, flag) |
+| \`$(basename "$GTSV")\` | Full GWAS hit table (rsid, trait, genotype, risk allele, copies, p, OR/beta, gene, pmid, flag, risk-allele freq) |
 | \`$(basename "$CTSV")\` | Full ClinVar pathogenic-class hit table |
 EOF
 

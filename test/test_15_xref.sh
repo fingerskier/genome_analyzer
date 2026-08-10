@@ -28,3 +28,9 @@ assert_contains "$sum" "not a diagnosis"    "summary: carries research-grade cav
 assert_contains "$sum" "Cond one; Cond two; Cond three (+1 more)" "clinvar summary: pipe-delimited conditions collapsed + capped"
 assert_eq "0" "$(printf '%s\n' "$sum" | grep -c 'Cond four')" "clinvar summary: 4th condition capped out of the rendered cell"
 assert_eq "0" "$(printf '%s\n' "$sum" | grep -c 'Cond one|Cond two')" "clinvar summary: no raw pipe characters bleed into the table"
+
+# Frequency context: raf is appended as GTSV column 11 and rendered as a
+# percent in the summary GWAS table.
+assert_contains "$gtsv" "GENEH	111	ok	0.23" "gwas tsv: raf appended after flag (col 11)"
+assert_contains "$sum" "Risk-allele freq" "gwas summary: frequency column header present"
+assert_contains "$sum" "| 23% |"          "gwas summary: raf rendered as rounded percent"
