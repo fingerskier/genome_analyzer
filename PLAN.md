@@ -24,7 +24,11 @@ Claude Code skills/MCP doing the interpretation heavy-lifting.
 ## Phase 2 — Annotation layer
 - [ ] Decide engine: **SnpEff** (fast setup, DB download) vs **VEP** (richer, cache is ~25 GB)
 - [ ] Confirm build matches the VCF — annotating GRCh38 calls against a GRCh37 DB is silently wrong
-- [ ] Add gnomAD frequency annotation → flag common variants (almost all benign) for triage
+- [x] Population-frequency context on trait-xref hits (harvested from ClinVar's
+      ExAC/1000G/ESP fields + GWAS catalog RAF — local gnomAD is infeasible here:
+      ~72 GB for chr1 alone; offline dbSNP ALFA (19.7 GB) is the future-work
+      upgrade path if richer coverage is ever needed; never per-variant APIs,
+      which would leak carried rsIDs)
 - [ ] Wire ClinVar + PharmGKB cross-reference
 
 ## Phase 3 — Interpretation via Claude

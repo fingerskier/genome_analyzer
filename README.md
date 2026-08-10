@@ -118,10 +118,20 @@ Run the cross-reference:
 
 Outputs: `*.traits.SUMMARY.md` (readable report — ClinVar pathogenic hits, then
 GWAS trait hits you carry ≥1 risk allele for, homozygous hits highlighted),
-`*.traits.gwas.tsv`, and `*.traits.clinvar.tsv` (full tables). If a database file
-is missing, the run still completes and the summary tells you which fetch script
-to run. **Strand-ambiguous SNPs** (A/T, C/G) can't be oriented from the VCF alone,
-so they're flagged and not scored — honest over tidy.
+`*.traits.gwas.tsv`, and `*.traits.clinvar.tsv` (full tables). Every hit now
+carries **population-frequency context**: ClinVar hits get an allele frequency
+harvested from the ExAC / 1000 Genomes / ESP fields already inside the ClinVar
+VCF, GWAS hits get the catalog's reported risk-allele frequency, and the
+summary buckets them in plain language (*common* ≥5%, *low-frequency* 1–5%,
+*rare* <1%, *unknown*). Frequency is triage context, not a verdict — a
+"pathogenic"-labelled variant that a third of the population carries is almost
+always low-impact, while *rare* or *unknown* is a reason to look closer. If you
+fetched the GWAS catalog before this feature, refresh it once with
+`./fetch-gwas.sh -f` (~68 MB); until then the summary notes that frequencies
+are unavailable. If a database file is missing, the run still completes and the
+summary tells you which fetch script to run. **Strand-ambiguous SNPs** (A/T,
+C/G) can't be oriented from the VCF alone, so they're flagged and not scored —
+honest over tidy.
 
 ## Testing
 
