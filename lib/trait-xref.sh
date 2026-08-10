@@ -28,6 +28,25 @@ risk_dosage() {
     BEGIN{ split(dosage(A,B,G,R), p, SUBSEP); print p[1]"\t"p[2]; exit }'
 }
 
+# Population-frequency buckets for triage context — single source of truth,
+# shared (like DOSAGE_FN) by freq_bucket() and the summary rendering.
+# bucket() returns "<bucket><SUBSEP><display>": common >=5%, low-frequency
+# 1-5%, rare <1%, unknown for absent/non-numeric/impossible values.
+FREQ_FN='
+function bucket(af,   pct){
+  if(af !~ /^[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$/ || af+0>1) return "unknown" SUBSEP "unknown"
+  pct=(af+0)*100
+  if(af+0>=0.05) return "common" SUBSEP sprintf("common (~%.0f%%)", pct)
+  if(af+0>=0.01) return "low-frequency" SUBSEP sprintf("low-frequency (~%.0f%%)", pct)
+  return "rare" SUBSEP "rare (<1%)"
+}'
+
+# freq_bucket <af> -> "<bucket>\t<display>"
+freq_bucket() {
+  awk -v A="$1" "$FREQ_FN"'
+    BEGIN{ split(bucket(A), p, SUBSEP); print p[1]"\t"p[2]; exit }'
+}
+
 # run_trait_xref: cross-reference the sample VCF ($INPUT) against the GWAS Catalog
 # ($GWAS_TBL) and ClinVar ($CLINVAR_VCF). Writes three artifacts under $OUTDIR and
 # prints the SUMMARY path. Degrades gracefully when a database file is absent.
