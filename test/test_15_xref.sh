@@ -34,3 +34,12 @@ assert_eq "0" "$(printf '%s\n' "$sum" | grep -c 'Cond one|Cond two')" "clinvar s
 assert_contains "$gtsv" "GENEH	111	ok	0.23" "gwas tsv: raf appended after flag (col 11)"
 assert_contains "$sum" "Risk-allele freq" "gwas summary: frequency column header present"
 assert_contains "$sum" "| 23% |"          "gwas summary: raf rendered as rounded percent"
+
+# ClinVar population frequency: AF_EXAC harvested with source, absent AF ->
+# NA/unknown, buckets rendered in the summary with a plain-language bullet.
+assert_contains "$ctsv" "ExAC"            "clinvar tsv: AF source recorded for the ExAC-backed hit"
+assert_contains "$ctsv" "NA	NA"           "clinvar tsv: AF-less record -> pop_af NA, source NA"
+assert_contains "$sum" "How common?"      "clinvar summary: frequency column header present"
+assert_contains "$sum" "common (~30%)"    "clinvar summary: AF_EXAC=0.30 -> common bucket with percent"
+assert_contains "$sum" "| unknown |"      "clinvar summary: AF-less hit shows unknown"
+assert_contains "$sum" "large fraction of the population" "summary: plain-language common-variant caveat present"

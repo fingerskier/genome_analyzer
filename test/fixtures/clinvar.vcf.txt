@@ -3,9 +3,12 @@
 ##INFO=<ID=CLNDN,Number=.,Type=String,Description="disease name">
 ##INFO=<ID=CLNREVSTAT,Number=.,Type=String,Description="review status">
 ##INFO=<ID=GENEINFO,Number=1,Type=String,Description="gene">
+##INFO=<ID=AF_EXAC,Number=1,Type=Float,Description="allele frequencies from ExAC">
+##INFO=<ID=AF_TGP,Number=1,Type=Float,Description="allele frequencies from TGP">
+##INFO=<ID=AF_ESP,Number=1,Type=Float,Description="allele frequencies from GO-ESP">
 ##contig=<ID=1>
 ##contig=<ID=2>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
-2	500	900	G	C	.	.	CLNSIG=Pathogenic;CLNDN=Example_condition;CLNREVSTAT=criteria_provided;GENEINFO=GENEX:999
+2	500	900	G	C	.	.	CLNSIG=Pathogenic;CLNDN=Example_condition;CLNREVSTAT=criteria_provided;GENEINFO=GENEX:999;AF_EXAC=0.30
 1	100	901	A	G	.	.	CLNSIG=Benign;CLNDN=Nothing_notable;CLNREVSTAT=criteria_provided;GENEINFO=GENEY:888
 1	200	902	C	T	.	.	CLNSIG=Pathogenic;CLNDN=Cond_one|Cond_two|Cond_three|Cond_four;CLNREVSTAT=criteria_provided;GENEINFO=GENEZ:777

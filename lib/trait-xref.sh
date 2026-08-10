@@ -121,20 +121,31 @@ run_trait_xref() {
     : > "$CTSV"
   else
     log "ClinVar cross-reference (pathogenic-class)"
+    # Population AF is harvested from ClinVar's own cohort fields when the VCF
+    # declares them; a custom -c VCF without the tags degrades to NA (bcftools
+    # query errors out on undefined tags, so probe the header first).
+    local cv_fmt='%CHROM\t%POS\t%REF\t%ALT\t%INFO/CLNSIG\t%INFO/CLNDN\t%INFO/CLNREVSTAT\t%INFO/GENEINFO'
+    if bcftools view -h "$CLINVAR_VCF" 2>/dev/null | grep -q 'ID=AF_EXAC'; then
+      cv_fmt="$cv_fmt"'\t%INFO/AF_EXAC\t%INFO/AF_TGP\t%INFO/AF_ESP'
+    fi
     bcftools query \
       -i 'CLNSIG ~ "Pathogenic" || CLNSIG ~ "Likely_pathogenic" || CLNSIG ~ "risk_factor" || CLNSIG ~ "drug_response"' \
-      -f '%CHROM\t%POS\t%REF\t%ALT\t%INFO/CLNSIG\t%INFO/CLNDN\t%INFO/CLNREVSTAT\t%INFO/GENEINFO\n' \
+      -f "$cv_fmt"'\n' \
       "$CLINVAR_VCF" 2>/dev/null \
       | awk -F'\t' 'BEGIN{OFS="\t"}
           FNR==NR{
             k=$1":"$2":"$3":"$4
             g=$8; gsub(/:[0-9]+/,"",g); gsub(/\|/,", ",g)
-            sig[k]=$5; dn[k]=$6; rev[k]=$7; gene[k]=g; next
+            af="NA"; src="NA"
+            if(NF>=9 && $9!="." && $9!=""){ af=$9; src="ExAC" }
+            else if(NF>=10 && $10!="." && $10!=""){ af=$10; src="1000G" }
+            else if(NF>=11 && $11!="." && $11!=""){ af=$11; src="ESP" }
+            sig[k]=$5; dn[k]=$6; rev[k]=$7; gene[k]=g; paf[k]=af; psrc[k]=src; next
           }
           { k=$1":"$2":"$4":"$5
             if(k in sig){
               cond=dn[k]; gsub(/_/," ",cond)
-              print $1":"$2, $5, ($6=="hom"?"homozygous":"heterozygous"), sig[k], cond, rev[k], gene[k]
+              print $1":"$2, $5, ($6=="hom"?"homozygous":"heterozygous"), sig[k], cond, rev[k], gene[k], paf[k], psrc[k]
             }
           }' - "$tmp/carried.tsv" > "$CTSV"
     local chits
@@ -146,14 +157,15 @@ run_trait_xref() {
   local clinvar_rows gwas_rows
   # CLNDN/CLNSIG pack multiple values with '|', which would collide with the
   # markdown column delimiter — collapse to "; " and cap the condition list at 3.
-  clinvar_rows="$(awk -F'\t' 'NR<=50{
+  clinvar_rows="$(awk -F'\t' "$FREQ_FN"'NR<=50{
       sig=$4; gene=$7; gsub(/\|/,"; ",sig); gsub(/\|/,"; ",gene)
       n=split($5, cc, /\|/); cond=""
       for(i=1;i<=n && i<=3;i++) cond=cond (i>1?"; ":"") cc[i]
       if(n>3) cond=cond " (+" (n-3) " more)"
-      printf "| %s | %s | %s | %s | %s |\n", cond, gene, $3, sig, $6
+      split(bucket($8), bb, SUBSEP)
+      printf "| %s | %s | %s | %s | %s | %s |\n", cond, gene, $3, sig, $6, bb[2]
     }' "$CTSV")"
-  : "${clinvar_rows:=| _none carried_ |  |  |  |  |}"
+  : "${clinvar_rows:=| _none carried_ |  |  |  |  |  |}"
   gwas_rows="$(awk -F'\t' '$10!="ambiguous"' "$GTSV" \
     | LC_ALL=C sort -t"$(printf '\t')" -k6,6g \
     | awk -F'\t' 'NR<=50{
@@ -171,8 +183,8 @@ _Generated $(date -u '+%Y-%m-%d %H:%M UTC') by xref-traits.sh. **Research-grade 
 ## ClinVar — pathogenic-class variants you carry
 $clinvar_note
 
-| Condition | Gene | Your call | Significance | Review status |
-|---|---|---|---|---|
+| Condition | Gene | Your call | Significance | Review status | How common? |
+|---|---|---|---|---|---|
 $clinvar_rows
 
 ## GWAS Catalog — trait associations you carry (p < 5e-8)
@@ -194,6 +206,14 @@ two alleles match the catalogued risk allele.)
   scored for copies.
 - ClinVar **review status** indicates how well-supported a classification is
   (more submitters / expert panels = stronger).
+- **How common?** buckets population frequency: *common* (≥5%), *low-frequency*
+  (1–5%), *rare* (<1%). A variant carried by a large fraction of the population is
+  almost never seriously harmful on its own, despite alarming condition names —
+  rarity is a reason to look closer, not a verdict. ClinVar frequencies come from
+  the ExAC / 1000 Genomes / ESP cohorts; GWAS risk-allele frequencies from the
+  catalog's reporting study.
+- An \`unknown\` frequency means those cohorts did not report the variant — often
+  a hint of rarity, but also routine for indels and recently catalogued variants.
 - This input is a genome VCF with reference blocks, so a known risk site you are
   *not* listed at was genuinely called homozygous-reference (0 copies), not missing.
 
@@ -205,7 +225,7 @@ two alleles match the catalogued risk allele.)
 | File | What it is |
 |---|---|
 | \`$(basename "$GTSV")\` | Full GWAS hit table (rsid, trait, genotype, risk allele, copies, p, OR/beta, gene, pmid, flag, risk-allele freq) |
-| \`$(basename "$CTSV")\` | Full ClinVar pathogenic-class hit table |
+| \`$(basename "$CTSV")\` | Full ClinVar pathogenic-class hit table (chrom:pos, allele, zygosity, significance, condition, review status, gene, pop AF, AF source) |
 EOF
 
   log "done: $SUMMARY"
