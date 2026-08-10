@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # fetch-gwas.sh — download GWAS Catalog associations, normalize to a compact
-# join-ready table at data/gwas-catalog.tsv: rsid risk trait pval orbeta gene pmid.
+# join-ready table at data/gwas-catalog.tsv:
+#   rsid risk trait pval orbeta gene pmid raf
 # Only single-rsID rows with a single-base risk allele are kept (v1 scope).
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -10,10 +11,18 @@ GWAS_URL="${GWAS_URL:-https://ftp.ebi.ac.uk/pub/databases/gwas/releases/latest/g
 
 # normalize_gwas: GWAS Catalog associations TSV on stdin -> normalized table.
 # Columns read (1-based): 2 PUBMEDID, 8 DISEASE/TRAIT, 15 MAPPED_GENE,
-# 21 STRONGEST SNP-RISK ALLELE (e.g. "rs1234-A"), 28 P-VALUE, 31 OR or BETA.
+# 21 STRONGEST SNP-RISK ALLELE (e.g. "rs1234-A"), 27 RISK ALLELE FREQUENCY,
+# 28 P-VALUE, 31 OR or BETA. Col 27 is sanity-checked against the header: on
+# drift we warn and emit NA rather than harvest a wrong column.
 normalize_gwas() {
   awk -F'\t' 'BEGIN{OFS="\t"}
-    NR==1{next}
+    NR==1{
+      if($27 != "RISK ALLELE FREQUENCY"){
+        badhdr=1
+        print "WARNING: header col 27 is not RISK ALLELE FREQUENCY; raf column set to NA" > "/dev/stderr"
+      }
+      next
+    }
     {
       sra=$21
       p=0; for(i=length(sra);i>=1;i--){ if(substr(sra,i,1)=="-"){p=i; break} }
@@ -22,7 +31,9 @@ normalize_gwas() {
       if(rsid !~ /^rs[0-9]+$/) next
       if(risk !~ /^[ACGT]$/)   next
       trait=$8; gsub(/[\t\r]/," ",trait)
-      print rsid, risk, trait, $28, $31, $15, $2
+      raf=$27; gsub(/\r/,"",raf)
+      if(badhdr || raf !~ /^[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$/ || raf+0>1) raf="NA"
+      print rsid, risk, trait, $28, $31, $15, $2, raf
     }'
 }
 

@@ -28,6 +28,25 @@ risk_dosage() {
     BEGIN{ split(dosage(A,B,G,R), p, SUBSEP); print p[1]"\t"p[2]; exit }'
 }
 
+# Population-frequency buckets for triage context — single source of truth,
+# shared (like DOSAGE_FN) by freq_bucket() and the summary rendering.
+# bucket() returns "<bucket><SUBSEP><display>": common >=5%, low-frequency
+# 1-5%, rare <1%, unknown for absent/non-numeric/impossible values.
+FREQ_FN='
+function bucket(af,   pct){
+  if(af !~ /^[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$/ || af+0>1) return "unknown" SUBSEP "unknown"
+  pct=(af+0)*100
+  if(af+0>=0.05) return "common" SUBSEP sprintf("common (~%.0f%%)", pct)
+  if(af+0>=0.01) return "low-frequency" SUBSEP sprintf("low-frequency (~%.0f%%)", pct)
+  return "rare" SUBSEP "rare (<1%)"
+}'
+
+# freq_bucket <af> -> "<bucket>\t<display>"
+freq_bucket() {
+  awk -v A="$1" "$FREQ_FN"'
+    BEGIN{ split(bucket(A), p, SUBSEP); print p[1]"\t"p[2]; exit }'
+}
+
 # run_trait_xref: cross-reference the sample VCF ($INPUT) against the GWAS Catalog
 # ($GWAS_TBL) and ClinVar ($CLINVAR_VCF). Writes three artifacts under $OUTDIR and
 # prints the SUMMARY path. Degrades gracefully when a database file is absent.
@@ -65,11 +84,12 @@ run_trait_xref() {
     : > "$GTSV"
   else
     log "GWAS Catalog cross-reference (p < 5e-8)"
+    local gwas_cols; gwas_cols="$(head -n 1 "$GWAS_TBL" | awk -F'\t' '{print NF}')"
     awk -F'\t' "$DOSAGE_FN"'
       BEGIN{OFS="\t"; THRESH=5e-8}
       FNR==NR{
         if($4 ~ /[0-9]/ && ($4+0)<THRESH){
-          rec=$2 SUBSEP $3 SUBSEP $4 SUBSEP $5 SUBSEP $6 SUBSEP $7
+          rec=$2 SUBSEP $3 SUBSEP $4 SUBSEP $5 SUBSEP $6 SUBSEP $7 SUBSEP (NF>=8?$8:"NA")
           g[$1]=($1 in g)? g[$1] "\x1f" rec : rec
         }
         next
@@ -84,7 +104,7 @@ run_trait_xref() {
           dose=dd[1]; flag=dd[2]
           if(flag=="allele_mismatch") continue
           if(flag=="ambiguous" || dose+0>=1)
-            print rs, f[2], geno, f[1], dose, f[3], f[4], f[5], f[6], flag
+            print rs, f[2], geno, f[1], dose, f[3], f[4], f[5], f[6], flag, f[7]
         }
       }' "$GWAS_TBL" "$tmp/carried.tsv" \
       | LC_ALL=C sort -t"$(printf '\t')" -k2,2 > "$GTSV"
@@ -93,6 +113,9 @@ run_trait_xref() {
     homhits="$(awk -F'\t' '$5==2' "$GTSV" | grep -c . || true)"
     ambn="$(awk -F'\t'   '$10=="ambiguous"' "$GTSV" | grep -c . || true)"
     gwas_note="$ghits trait association(s) carried ($homhits homozygous; $ambn strand-ambiguous, not scored) — see \`$(basename "$GTSV")\`."
+    if [[ "${gwas_cols:-8}" -lt 8 ]]; then
+      gwas_note="$gwas_note _Frequencies unavailable in this cached catalog — refresh with \`./fetch-gwas.sh -f\`._"
+    fi
   fi
 
   # 3) ClinVar join (position+allele, pathogenic-class only).
@@ -102,20 +125,31 @@ run_trait_xref() {
     : > "$CTSV"
   else
     log "ClinVar cross-reference (pathogenic-class)"
+    # Population AF is harvested from ClinVar's own cohort fields when the VCF
+    # declares them; a custom -c VCF without the tags degrades to NA (bcftools
+    # query errors out on undefined tags, so probe the header first).
+    local cv_fmt='%CHROM\t%POS\t%REF\t%ALT\t%INFO/CLNSIG\t%INFO/CLNDN\t%INFO/CLNREVSTAT\t%INFO/GENEINFO'
+    if bcftools view -h "$CLINVAR_VCF" 2>/dev/null | grep -q 'ID=AF_EXAC'; then
+      cv_fmt="$cv_fmt"'\t%INFO/AF_EXAC\t%INFO/AF_TGP\t%INFO/AF_ESP'
+    fi
     bcftools query \
       -i 'CLNSIG ~ "Pathogenic" || CLNSIG ~ "Likely_pathogenic" || CLNSIG ~ "risk_factor" || CLNSIG ~ "drug_response"' \
-      -f '%CHROM\t%POS\t%REF\t%ALT\t%INFO/CLNSIG\t%INFO/CLNDN\t%INFO/CLNREVSTAT\t%INFO/GENEINFO\n' \
+      -f "$cv_fmt"'\n' \
       "$CLINVAR_VCF" 2>/dev/null \
       | awk -F'\t' 'BEGIN{OFS="\t"}
           FNR==NR{
             k=$1":"$2":"$3":"$4
             g=$8; gsub(/:[0-9]+/,"",g); gsub(/\|/,", ",g)
-            sig[k]=$5; dn[k]=$6; rev[k]=$7; gene[k]=g; next
+            af="NA"; src="NA"
+            if(NF>=9 && $9!="." && $9!=""){ af=$9; src="ExAC" }
+            else if(NF>=10 && $10!="." && $10!=""){ af=$10; src="1000G" }
+            else if(NF>=11 && $11!="." && $11!=""){ af=$11; src="ESP" }
+            sig[k]=$5; dn[k]=$6; rev[k]=$7; gene[k]=g; paf[k]=af; psrc[k]=src; next
           }
           { k=$1":"$2":"$4":"$5
             if(k in sig){
               cond=dn[k]; gsub(/_/," ",cond)
-              print $1":"$2, $5, ($6=="hom"?"homozygous":"heterozygous"), sig[k], cond, rev[k], gene[k]
+              print $1":"$2, $5, ($6=="hom"?"homozygous":"heterozygous"), sig[k], cond, rev[k], gene[k], paf[k], psrc[k]
             }
           }' - "$tmp/carried.tsv" > "$CTSV"
     local chits
@@ -127,18 +161,22 @@ run_trait_xref() {
   local clinvar_rows gwas_rows
   # CLNDN/CLNSIG pack multiple values with '|', which would collide with the
   # markdown column delimiter — collapse to "; " and cap the condition list at 3.
-  clinvar_rows="$(awk -F'\t' 'NR<=50{
+  clinvar_rows="$(awk -F'\t' "$FREQ_FN"'NR<=50{
       sig=$4; gene=$7; gsub(/\|/,"; ",sig); gsub(/\|/,"; ",gene)
       n=split($5, cc, /\|/); cond=""
       for(i=1;i<=n && i<=3;i++) cond=cond (i>1?"; ":"") cc[i]
       if(n>3) cond=cond " (+" (n-3) " more)"
-      printf "| %s | %s | %s | %s | %s |\n", cond, gene, $3, sig, $6
+      split(bucket($8), bb, SUBSEP)
+      printf "| %s | %s | %s | %s | %s | %s |\n", cond, gene, $3, sig, $6, bb[2]
     }' "$CTSV")"
-  : "${clinvar_rows:=| _none carried_ |  |  |  |  |}"
+  : "${clinvar_rows:=| _none carried_ |  |  |  |  |  |}"
   gwas_rows="$(awk -F'\t' '$10!="ambiguous"' "$GTSV" \
     | LC_ALL=C sort -t"$(printf '\t')" -k6,6g \
-    | awk -F'\t' 'NR<=50{hl=($5==2?"**":""); printf "| %s | %s | %s%s%s | %s | %s | %s | %s |\n", $2,$8,hl,$3,hl,$4,$5,$6,$7}')"
-  : "${gwas_rows:=| _none carried_ |  |  |  |  |  |  |}"
+    | awk -F'\t' 'NR<=50{
+        hl=($5==2?"**":"")
+        raf=($11=="" || $11=="NA" ? "—" : sprintf("%.0f%%", $11*100))
+        printf "| %s | %s | %s%s%s | %s | %s | %s | %s | %s |\n", $2,$8,hl,$3,hl,$4,$5,$6,$7,raf}')"
+  : "${gwas_rows:=| _none carried_ |  |  |  |  |  |  |  |}"
 
   log "writing $SUMMARY"
   cat > "$SUMMARY" <<EOF
@@ -149,15 +187,15 @@ _Generated $(date -u '+%Y-%m-%d %H:%M UTC') by xref-traits.sh. **Research-grade 
 ## ClinVar — pathogenic-class variants you carry
 $clinvar_note
 
-| Condition | Gene | Your call | Significance | Review status |
-|---|---|---|---|---|
+| Condition | Gene | Your call | Significance | Review status | How common? |
+|---|---|---|---|---|---|
 $clinvar_rows
 
 ## GWAS Catalog — trait associations you carry (p < 5e-8)
 $gwas_note
 
-| Trait | Gene | Your genotype | Risk allele | Copies | p-value | OR/beta |
-|---|---|---|---|---|---|---|
+| Trait | Gene | Your genotype | Risk allele | Copies | p-value | OR/beta | Risk-allele freq |
+|---|---|---|---|---|---|---|---|
 $gwas_rows
 
 (**Bold** genotype = homozygous for the risk allele. "Copies" is how many of your
@@ -172,6 +210,14 @@ two alleles match the catalogued risk allele.)
   scored for copies.
 - ClinVar **review status** indicates how well-supported a classification is
   (more submitters / expert panels = stronger).
+- **How common?** buckets population frequency: *common* (≥5%), *low-frequency*
+  (1–5%), *rare* (<1%). A variant carried by a large fraction of the population is
+  almost never seriously harmful on its own, despite alarming condition names —
+  rarity is a reason to look closer, not a verdict. ClinVar frequencies come from
+  the ExAC / 1000 Genomes / ESP cohorts; GWAS risk-allele frequencies from the
+  catalog's reporting study.
+- An \`unknown\` frequency means those cohorts did not report the variant — often
+  a hint of rarity, but also routine for indels and recently catalogued variants.
 - This input is a genome VCF with reference blocks, so a known risk site you are
   *not* listed at was genuinely called homozygous-reference (0 copies), not missing.
 
@@ -182,8 +228,8 @@ two alleles match the catalogued risk allele.)
 ## Artifacts
 | File | What it is |
 |---|---|
-| \`$(basename "$GTSV")\` | Full GWAS hit table (rsid, trait, genotype, risk allele, copies, p, OR/beta, gene, pmid, flag) |
-| \`$(basename "$CTSV")\` | Full ClinVar pathogenic-class hit table |
+| \`$(basename "$GTSV")\` | Full GWAS hit table (rsid, trait, genotype, risk allele, copies, p, OR/beta, gene, pmid, flag, risk-allele freq) |
+| \`$(basename "$CTSV")\` | Full ClinVar pathogenic-class hit table (chrom:pos, allele, zygosity, significance, condition, review status, gene, pop AF, AF source) |
 EOF
 
   log "done: $SUMMARY"
