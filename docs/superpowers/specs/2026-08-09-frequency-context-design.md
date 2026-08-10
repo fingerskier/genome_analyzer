@@ -7,9 +7,9 @@ _2026-08-09_
 The trait cross-reference (`xref-traits.sh`) reports which ClinVar pathogenic-class
 and GWAS trait alleles the sample carries, but gives no sense of **how common each
 variant is in the general population**. Frequency is the single best triage signal:
-a "pathogenic"-labelled variant carried by 30% of people is almost certainly
-low-impact (e.g. the MTHFR thermolabile polymorphism), while a variant absent from
-population databases deserves more attention. PLAN.md Phase 2 calls this out as
+a "pathogenic"-labelled variant carried by a third of the population is almost
+certainly low-impact, while a variant absent from population databases deserves
+more attention. PLAN.md Phase 2 calls this out as
 "flag common variants (almost all benign) for triage".
 
 ## Goals
