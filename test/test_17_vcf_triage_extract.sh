@@ -65,14 +65,16 @@ GT="$XDIR/synth.traits.gwas.tsv"
   printf 'rs3\tDiseaseAmb\tA/T\tA\tNA\t1E-30\t3.0\tGENE3\t333\tambiguous\tNA\n'
   printf 'rs4\tDupWeak\tG/T\tT\t1\t1E-10\t2.2\tGENE4\t444\tok\t0.2\n'
   printf 'rs4\tDupStrong\tG/T\tT\t1\t1E-50\t2.6\tGENE4\t445\tok\t0.2\n'
+  printf 'rs5\tDiseaseFlip\tG/T\tT\t2\t1E-40\t5.0\tGENE5\t555\tstrand_flipped\t0.15\n'
 } > "$GT"
 out="$(bash "$XT" "$XDIR" synth 2>&1)"
 head_s="$(printf '%s\n' "$out" | sed -n '/== GWAS HEADLINE ==/,/== GWAS NOTABLE ==/p')"
-assert_contains "$head_s" "total 5" "gwas: headline total count"
-assert_contains "$head_s" "1 homozygous" "gwas: headline homozygous count"
+assert_contains "$head_s" "total 6" "gwas: headline total count"
+assert_contains "$head_s" "2 homozygous" "gwas: headline homozygous count"
 assert_contains "$head_s" "1 strand-ambiguous" "gwas: headline ambiguous count"
 notable="$(printf '%s\n' "$out" | sed -n '/== GWAS NOTABLE ==/,/== PHARMGKB ==/p')"
 assert_contains "$notable" "DiseaseOne" "gwas: OR 2.4 hit is notable"
+assert_contains "$notable" "DiseaseFlip" "gwas: strand_flipped scored hit is notable"
 case "$notable" in *MolecularTrait*) assert_eq "no" "yes" "gwas: beta 0.08 NOT notable";; *) assert_eq "ok" "ok" "gwas: beta 0.08 NOT notable";; esac
 case "$notable" in *DiseaseAmb*) assert_eq "no" "yes" "gwas: ambiguous NOT notable";; *) assert_eq "ok" "ok" "gwas: ambiguous NOT notable";; esac
 assert_contains "$notable" "DupStrong" "gwas: dedup keeps strongest p"

@@ -65,7 +65,7 @@ emit_clinvar_sections() {
   # then grepped out of the temp file. Thresholds live here and nowhere else.
   awk -F"$TAB" '
     function bucket(af) {
-      if (af == "" || af == "NA") return "unknown"
+      if (af == "" || af == "NA" || af !~ /^[0-9.eE+-]+$/) return "unknown"
       if (af+0 < 0.01) return "rare"
       if (af+0 < 0.05) return "low-frequency"
       return "common"
@@ -78,7 +78,7 @@ emit_clinvar_sections() {
     }
     {
       sig=$4; rev=$6; b=bucket($8)
-      cond=$5; if (length(cond) > 100) cond = substr(cond, 1, 100) "..."
+      cond=$5; gsub(/\|/, "; ", cond); if (length(cond) > 100) cond = substr(cond, 1, 100) "..."
       afs=(b == "unknown" ? "AF unknown" : sprintf("AF %s (%s)", $8, $9))
       isPath=(sig ~ /athogenic/ && sig !~ /Conflicting/)
       if (isPath && (b == "rare" || b == "unknown"))
@@ -130,6 +130,7 @@ emit_gwas_sections() {
 
   echo ""
   echo "== GWAS NOTABLE =="
+  echo "(flag ok or strand_flipped, OR >= 2.0, dedup by rsid keeping strongest p, cap 40)"
   # p-values like 1E-619 underflow doubles; compare exponent + log10(mantissa).
   nb="$(awk -F"$TAB" '
     function pstrength(p,  a, n, v) {
@@ -138,7 +139,7 @@ emit_gwas_sections() {
       v = p+0
       return (v > 0 ? log(v)/log(10) : -99999)
     }
-    $10 == "ok" && $7 ~ /^[0-9]*\.?[0-9]+([eE][+-]?[0-9]+)?$/ && $7+0 >= 2.0 {
+    ($10 == "ok" || $10 == "strand_flipped") && $7 ~ /^[0-9]*\.?[0-9]+([eE][+-]?[0-9]+)?$/ && $7+0 >= 2.0 {
       s = pstrength($6)
       if (!($1 in best) || s < bp[$1]) { best[$1] = $0; bp[$1] = s }
     }

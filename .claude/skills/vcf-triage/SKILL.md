@@ -1,6 +1,6 @@
 ---
 name: vcf-triage
-description: Use when asked to triage, interpret, or write a plain-language report over genome-analyzer run outputs (analyze.sh / xref-traits.sh results — *.SUMMARY.md and *.traits.*.tsv files). Produces a full report pairing technical detail with layman interpretation, using codified triage thresholds. Never diagnoses.
+description: Use when asked to triage, interpret, explain, or report on genome-analyzer run outputs (analyze.sh / xref-traits.sh results — *.SUMMARY.md and *.traits.*.tsv files). Produces a full report pairing technical detail with layman interpretation, using codified triage thresholds. Never diagnoses.
 ---
 
 # vcf-triage — plain-language triage report over pipeline outputs
