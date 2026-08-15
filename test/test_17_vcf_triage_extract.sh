@@ -56,3 +56,41 @@ assert_contains "$common" "total 7" "clinvar: COMMON carries total row count"
 out="$(bash "$XT" "$XDIR" nothere 2>&1)"
 assert_contains "$out" "== CLINVAR PRIORITY ==" "clinvar degrade: PRIORITY header present without table"
 assert_contains "$out" "(no clinvar table)" "clinvar degrade: placeholder note"
+
+# --- GWAS triage ---
+GT="$XDIR/synth.traits.gwas.tsv"
+{
+  printf 'rs1\tDiseaseOne\tA/G\tA\t1\t1E-20\t2.4\tGENE1\t111\tok\t0.3\n'
+  printf 'rs2\tMolecularTrait\tC/T\tT\t2\t1E-300\t0.08\tGENE2\t222\tok\t0.5\n'
+  printf 'rs3\tDiseaseAmb\tA/T\tA\tNA\t1E-30\t3.0\tGENE3\t333\tambiguous\tNA\n'
+  printf 'rs4\tDupWeak\tG/T\tT\t1\t1E-10\t2.2\tGENE4\t444\tok\t0.2\n'
+  printf 'rs4\tDupStrong\tG/T\tT\t1\t1E-50\t2.6\tGENE4\t445\tok\t0.2\n'
+} > "$GT"
+out="$(bash "$XT" "$XDIR" synth 2>&1)"
+head_s="$(printf '%s\n' "$out" | sed -n '/== GWAS HEADLINE ==/,/== GWAS NOTABLE ==/p')"
+assert_contains "$head_s" "total 5" "gwas: headline total count"
+assert_contains "$head_s" "1 homozygous" "gwas: headline homozygous count"
+assert_contains "$head_s" "1 strand-ambiguous" "gwas: headline ambiguous count"
+notable="$(printf '%s\n' "$out" | sed -n '/== GWAS NOTABLE ==/,/== PHARMGKB ==/p')"
+assert_contains "$notable" "DiseaseOne" "gwas: OR 2.4 hit is notable"
+case "$notable" in *MolecularTrait*) assert_eq "no" "yes" "gwas: beta 0.08 NOT notable";; *) assert_eq "ok" "ok" "gwas: beta 0.08 NOT notable";; esac
+case "$notable" in *DiseaseAmb*) assert_eq "no" "yes" "gwas: ambiguous NOT notable";; *) assert_eq "ok" "ok" "gwas: ambiguous NOT notable";; esac
+assert_contains "$notable" "DupStrong" "gwas: dedup keeps strongest p"
+case "$notable" in *DupWeak*) assert_eq "no" "yes" "gwas: dedup drops weaker p";; *) assert_eq "ok" "ok" "gwas: dedup drops weaker p";; esac
+
+# --- Cap at 40 with a "more" note ---
+CAPT="$XDIR/cap.traits.gwas.tsv"
+: > "$CAPT"
+i=1
+while [ "$i" -le 45 ]; do
+  printf 'rsc%d\tCapTrait%d\tA/G\tG\t1\t1E-9\t2.5\tGENEC\t9%d\tok\t0.1\n' "$i" "$i" "$i" >> "$CAPT"
+  i=$((i+1))
+done
+out="$(bash "$XT" "$XDIR" cap 2>&1)"
+shown="$(printf '%s\n' "$out" | grep -c 'CapTrait')"
+assert_eq "40" "$shown" "gwas: notable capped at 40 rows"
+assert_contains "$out" "5 more" "gwas: cap emits a 'more' note"
+
+# --- Full section order with all inputs present ---
+order="$(bash "$XT" "$XDIR" synth 2>&1 | grep '^== ' | tr -d '=' | tr -d ' ' | tr '\n' ',')"
+assert_eq "INPUTS,CLINVARPRIORITY,CLINVARPHARMA,CLINVARCOMMON,GWASHEADLINE,GWASNOTABLE,PHARMGKB," "$order" "triage: sections in spec order"

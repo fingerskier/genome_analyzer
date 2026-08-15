@@ -115,8 +115,45 @@ emit_clinvar_sections() {
   else echo "(no common pathogenic-class rows to defuse)"; fi
 }
 
-# Filled in by later tasks.
-emit_gwas_sections() { :; }
+emit_gwas_sections() {
+  echo ""
+  echo "== GWAS HEADLINE =="
+  if [ ! -f "$GTSV" ]; then
+    echo "(no gwas table)"
+    echo ""; echo "== GWAS NOTABLE =="; echo "(no gwas table)"
+    return
+  fi
+  awk -F"$TAB" '
+    { t++; if ($5 == "2") h++; if ($10 == "ambiguous") a++ }
+    END { printf "total %d associations; %d homozygous risk-allele; %d strand-ambiguous (not scored)\n", t, h, a }
+  ' "$GTSV"
+
+  echo ""
+  echo "== GWAS NOTABLE =="
+  # p-values like 1E-619 underflow doubles; compare exponent + log10(mantissa).
+  nb="$(awk -F"$TAB" '
+    function pstrength(p,  a, n, v) {
+      n = split(toupper(p), a, "E")
+      if (n > 1) return a[2]+0 + (a[1]+0 > 0 ? log(a[1]+0)/log(10) : 0)
+      v = p+0
+      return (v > 0 ? log(v)/log(10) : -99999)
+    }
+    $10 == "ok" && $7 ~ /^[0-9]*\.?[0-9]+([eE][+-]?[0-9]+)?$/ && $7+0 >= 2.0 {
+      s = pstrength($6)
+      if (!($1 in best) || s < bp[$1]) { best[$1] = $0; bp[$1] = s }
+    }
+    END { for (r in best) print best[r] }
+  ' "$GTSV" | sort -t"$TAB" -k7,7gr | awk -F"$TAB" '
+    NR <= 40 {
+      raf = ($11 == "" || $11 == "NA" ? "unknown" : sprintf("%.0f%%", $11*100))
+      printf "%s | %s | genotype %s | risk %s x%s | p %s | OR %s | %s | RAF %s\n", \
+        $2, $8, $3, $4, $5, $6, $7, $1, raf
+    }
+    END { if (NR > 40) printf "... %d more notable hits not shown\n", NR-40 }
+  ')"
+  if [ -n "$nb" ]; then printf '%s\n' "$nb"
+  else echo "(none — no unambiguous hits with OR >= 2.0)"; fi
+}
 
 emit_pharmgkb() {
   echo ""
