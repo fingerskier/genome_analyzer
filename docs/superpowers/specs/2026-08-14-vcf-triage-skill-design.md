@@ -82,8 +82,11 @@ run artifact and derives dir/base). Exit 0 always, except usage errors (exit 1).
 - Review-status weight: `reviewed_by_expert_panel` (4) > `criteria_provided,_multiple_submitters,_no_conflicts` (3) > `criteria_provided,_single_submitter` / `criteria_provided,_conflicting_classifications` (2) > `no_assertion_criteria_provided` (1).
 - Priority = pathogenic-class AND (rare or unknown) — everything else pathogenic-class
   goes to the defuse list.
-- GWAS notable = flag `ok` AND or_beta parses as a number AND (≥ 2.0 or ≤ 0.5).
-  Beta-valued molecular-trait rows fall out naturally (betas rarely reach 2).
+- GWAS notable = flag `ok` AND or_beta parses as a number AND ≥ 2.0.
+  (The ≤ 0.5 protective side is deliberately dropped: the catalog's OR/beta
+  column mixes odds ratios and betas, and a small beta is indistinguishable
+  from a protective OR — including it would flood the report with
+  molecular-trait rows. Betas rarely reach 2, so the ≥ 2.0 side stays clean.)
 
 ### 3. Report template (embedded in SKILL.md)
 
