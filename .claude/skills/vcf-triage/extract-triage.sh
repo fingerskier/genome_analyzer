@@ -33,17 +33,35 @@ tmpd="$(mktemp -d)"; trap 'rm -rf "$tmpd"' EXIT
 
 emit_inputs() {
   echo "== INPUTS =="
-  if [ -f "$CTSV" ]; then
+  # xref-traits.sh writes an EMPTY placeholder TSV when a database is absent,
+  # so a zero-row table means the analysis was skipped, not a clean negative.
+  if [ -f "$CTSV" ] && [ -s "$CTSV" ]; then
     echo "clinvar: found ($(wc -l < "$CTSV" | tr -d ' ') rows)"
+  elif [ -f "$CTSV" ]; then
+    echo "clinvar: present but EMPTY (0 rows) — database was likely skipped when xref-traits.sh ran; rerun after fetch-clinvar.sh"
   else
     echo "clinvar: MISSING — run xref-traits.sh (needs data/clinvar.GRCh38.vcf.gz via fetch-clinvar.sh)"
   fi
-  if [ -f "$GTSV" ]; then
+  if [ -f "$GTSV" ] && [ -s "$GTSV" ]; then
     echo "gwas: found ($(wc -l < "$GTSV" | tr -d ' ') rows)"
+  elif [ -f "$GTSV" ]; then
+    echo "gwas: present but EMPTY (0 rows) — database was likely skipped when xref-traits.sh ran; rerun after fetch-gwas.sh"
   else
     echo "gwas: MISSING — run xref-traits.sh (needs data/gwas-catalog.tsv via fetch-gwas.sh)"
   fi
-  sums="$(ls "$DIR"/*.SUMMARY.md 2>/dev/null | grep -v '\.traits\.' || true)"
+  # Scope the summaries to the selected run when the basename follows the
+  # provider convention (<stem>.snp-indel*/.sv*/.cnv*); otherwise list all.
+  stem="$BASE"
+  case "$stem" in
+    *.snp-indel*) stem="${stem%%.snp-indel*}" ;;
+    *.sv*)        stem="${stem%%.sv*}" ;;
+    *.cnv*)       stem="${stem%%.cnv*}" ;;
+  esac
+  if [ "$stem" != "$BASE" ]; then
+    sums="$(ls "$DIR/$stem".*.SUMMARY.md 2>/dev/null | grep -v '\.traits\.' || true)"
+  else
+    sums="$(ls "$DIR"/*.SUMMARY.md 2>/dev/null | grep -v '\.traits\.' || true)"
+  fi
   if [ -n "$sums" ]; then
     echo "run summaries (read these directly):"
     printf '%s\n' "$sums" | sed 's/^/  /'
@@ -59,6 +77,12 @@ emit_clinvar_sections() {
     echo "(no clinvar table)"
     echo ""; echo "== CLINVAR PHARMA =="; echo "(no clinvar table)"
     echo ""; echo "== CLINVAR COMMON =="; echo "(no clinvar table)"
+    return
+  fi
+  if [ ! -s "$CTSV" ]; then
+    echo "(clinvar table empty — analysis may not have run; not a clean negative)"
+    echo ""; echo "== CLINVAR PHARMA =="; echo "(clinvar table empty — analysis may not have run; not a clean negative)"
+    echo ""; echo "== CLINVAR COMMON =="; echo "(clinvar table empty — analysis may not have run; not a clean negative)"
     return
   fi
   # One pass tags every row PRIORITY / PHARMA / COMMON / COUNTS; sections are
@@ -121,6 +145,11 @@ emit_gwas_sections() {
   if [ ! -f "$GTSV" ]; then
     echo "(no gwas table)"
     echo ""; echo "== GWAS NOTABLE =="; echo "(no gwas table)"
+    return
+  fi
+  if [ ! -s "$GTSV" ]; then
+    echo "(gwas table empty — analysis may not have run; not a clean negative)"
+    echo ""; echo "== GWAS NOTABLE =="; echo "(gwas table empty — analysis may not have run; not a clean negative)"
     return
   fi
   awk -F"$TAB" '

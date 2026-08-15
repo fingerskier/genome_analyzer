@@ -96,3 +96,25 @@ assert_contains "$out" "5 more" "gwas: cap emits a 'more' note"
 # --- Full section order with all inputs present ---
 order="$(bash "$XT" "$XDIR" synth 2>&1 | grep '^== ' | tr -d '=' | tr -d ' ' | tr '\n' ',')"
 assert_eq "INPUTS,CLINVARPRIORITY,CLINVARPHARMA,CLINVARCOMMON,GWASHEADLINE,GWASNOTABLE,PHARMGKB," "$order" "triage: sections in spec order"
+
+# --- Empty placeholder tables (DB skipped by xref-traits.sh) are not clean negatives ---
+EDIR="$TMP/triage_empty"; mkdir -p "$EDIR"
+: > "$EDIR/skip.traits.clinvar.tsv"
+: > "$EDIR/skip.traits.gwas.tsv"
+out="$(bash "$XT" "$EDIR" skip 2>&1)"; rc=$?
+assert_eq "0" "$rc" "empty: exits 0"
+assert_contains "$out" "clinvar: present but EMPTY" "empty: clinvar empty note in INPUTS"
+assert_contains "$out" "gwas: present but EMPTY" "empty: gwas empty note in INPUTS"
+assert_contains "$out" "database was likely skipped" "empty: skip explanation present"
+case "$out" in *"(none — no rare"*) assert_eq "no" "yes" "empty: PRIORITY does not claim a clean negative";; *) assert_eq "ok" "ok" "empty: PRIORITY does not claim a clean negative";; esac
+assert_contains "$out" "(clinvar table empty — analysis may not have run; not a clean negative)" "empty: clinvar sections carry empty-table note"
+assert_contains "$out" "(gwas table empty — analysis may not have run; not a clean negative)" "empty: gwas sections carry empty-table note"
+
+# --- Summaries listing is scoped to the selected run ---
+printf '# a\n' > "$XDIR/alpha.snp-indel.genome.SUMMARY.md"
+printf '# a\n' > "$XDIR/alpha.sv.SUMMARY.md"
+printf '# b\n' > "$XDIR/beta.snp-indel.genome.SUMMARY.md"
+out="$(bash "$XT" "$XDIR" alpha.snp-indel.genome.pass 2>&1)"
+assert_contains "$out" "alpha.sv.SUMMARY.md" "scope: same-run sv summary listed"
+case "$out" in *beta.snp-indel*) assert_eq "no" "yes" "scope: other-run summary NOT listed";; *) assert_eq "ok" "ok" "scope: other-run summary NOT listed";; esac
+rm "$XDIR/alpha.snp-indel.genome.SUMMARY.md" "$XDIR/alpha.sv.SUMMARY.md" "$XDIR/beta.snp-indel.genome.SUMMARY.md"

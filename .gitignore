@@ -25,6 +25,7 @@ out/
 *.events.bed
 *.traits.gwas.tsv
 *.traits.clinvar.tsv
+*.report.md
 
 # Annotation caches / databases (huge)
 vep_cache/

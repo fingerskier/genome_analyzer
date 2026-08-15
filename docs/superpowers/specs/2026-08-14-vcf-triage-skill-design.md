@@ -62,7 +62,12 @@ run artifact and derives dir/base). Exit 0 always, except usage errors (exit 1).
 **Output:** plain text to stdout, small (target < 200 lines), sections:
 
 ```
-== INPUTS ==            per-file: found/missing (+ which fetch/xref step enables it)
+== INPUTS ==            per-file: found/EMPTY/missing (+ which fetch/xref step
+                        enables it). EMPTY = xref-traits.sh wrote a placeholder
+                        because a database was absent — reported as a likely
+                        skipped analysis, never as a clean negative. Run
+                        summaries are scoped to the selected run's stem when
+                        the basename follows the provider convention.
 == CLINVAR PRIORITY ==  pathogenic-class rows, rare (<1%) or unknown AF first,
                         ordered by review-status weight, full row detail
 == CLINVAR PHARMA ==    drug_response rows with review status
