@@ -36,7 +36,8 @@ Claude Code skills/MCP doing the interpretation heavy-lifting.
 - [ ] Add **BioMCP**: `claude mcp add biomcp -- uv run --with biomcp-python biomcp run`
 - [ ] (optional) **AlphaGenome** via BioMCP for regulatory effect on "uncertain" variants
       (needs `ALPHAGENOME_API_KEY`)
-- [ ] Author a local skill `vcf-triage` that codifies our filter thresholds + report format
+- [x] Author a local skill `vcf-triage` that codifies our filter thresholds + report format
+      (`.claude/skills/vcf-triage/` — extract-triage.sh + SKILL.md)
 
 ## Phase 4 — Re-analysis from FASTQ (only if needed)
 Trigger this phase only if you want structural variants, a fresh caller, or a newer reference —

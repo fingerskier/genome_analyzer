@@ -133,6 +133,19 @@ summary tells you which fetch script to run. **Strand-ambiguous SNPs** (A/T,
 C/G) can't be oriented from the VCF alone, so they're flagged and not scored —
 honest over tidy.
 
+## Plain-language report (vcf-triage skill)
+
+With [Claude Code](https://claude.com/claude-code), ask for a triage report
+("triage the latest run", "interpret these results") and the project-local
+`vcf-triage` skill turns a run's outputs into `<base>.report.md`: technical
+detail and layman interpretation side by side, ClinVar hits triaged by
+population frequency and review status, an expert-panel pharmacogenomics
+table, and GWAS hits filtered to unambiguous odds-ratio ≥ 2 associations.
+The thresholds live in `.claude/skills/vcf-triage/extract-triage.sh`, so the
+selection is deterministic even though the prose is generated. Reports land
+next to the run outputs (git-ignored). Same disclaimer as everything else
+here: research-grade exploration, not a diagnosis.
+
 ## Testing
 
 ```bash
